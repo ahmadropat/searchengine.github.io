@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Simple mobile web search engine with keyword database and history">
+    <title>Mobile Web Search Engine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('https://your-batik-texture-url.com'); /* Ganti dengan URL tekstur batik */
+            background-size: cover;
+            background-repeat: no-repeat;
+            color: #333;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #ff4757;
+        }
+        h1 {
+            font-size: 2.5em;
+        }
+        .tab {
+            display: inline-block;
+            cursor: pointer;
+            margin: 0 5px;
+            padding: 10px;
+            border: 1px solid #ff4757;
+            border-radius: 5px;
+            background-color: rgba(255, 71, 87, 0.8);
+            color: #fff;
+            transition: background-color 0.3s;
+        }
+        .tab:hover {
+            background-color: #ff6b81;
+        }
+        .active {
+            background-color: #ff4757;
+        }
+        form {
+            background-color: rgba(255, 255, 255, 0.9); /* Background form */
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+        input[type="text"], input[type="url"], textarea {
+            padding: 10px;
+            border: 2px solid #ff4757;
+            border-radius: 5px;
+            outline: none;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #ff4757;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #ff6b81;
+        }
+        .results, .db-results {
+            margin-top: 20px;
+        }
+        .result-item, .db-item {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ff4757;
+            text-align: left;
+        }
+        th {
+            background-color: #ff4757;
+            color: #fff;
+        }
+        .hidden {
+            display: none;
+        }
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Search Engine</h1>
+    </header>
+
+    <div>
+        <div class="tab active" onclick="showTab('search')">Search</div>
+        <div class="tab" onclick="showTab('database')">Database</div>
+        <div class="tab" onclick="showTab('history')">History</div>
+    </div>
+
+    <!-- Search Tab -->
+    <div id="search-tab">
+        <form id="search-form">
+            <input type="text" id="search-query" placeholder="Enter your search query" required>
+            <button type="submit">Search</button>
+        </form>
+        <div class="results" id="results">
+            <!-- Hasil pencarian akan ditampilkan di sini -->
+        </div>
+    </div>
+
+    <!-- Database Tab -->
+    <div id="database-tab" class="hidden">
+        <form id="db-form">
+            <input type="text" id="db-keyword" placeholder="Keyword" required>
+            <input type="url" id="db-url" placeholder="URL" required>
+            <textarea id="db-description" placeholder="Description" rows="3" required></textarea>
+            <button type="submit">Add to Database</button>
+        </form>
+        <button id="backup-btn">Backup Data</button>
+        <input type="file" id="import-file" accept=".json" />
+        <button id="import-btn">Import Data</button>
+        <button id="reset-btn">Reset Data</button>
+        <div class="db-results" id="db-results">
+            <!-- Hasil database akan ditampilkan di sini -->
+        </div>
+    </div>
+
+    <!-- History Tab -->
+    <div id="history-tab" class="hidden">
+        <table id="history-table">
+            <thead>
+                <tr>
+                    <th>Keyword</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody id="history-body">
+                <!-- Riwayat pencarian akan ditampilkan di sini -->
+            </tbody>
+        </table>
+        <button id="reset-history-btn">Reset History</button>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Simple Search Engine</p>
+    </footer>
+
+    <script>
+        const dbForm = document.getElementById('db-form');
+        const searchForm = document.getElementById('search-form');
+        const dbResultsDiv = document.getElementById('db-results');
+        const resultsDiv = document.getElementById('results');
+        const historyBody = document.getElementById('history-body');
+
+        function loadDatabase() {
+            const database = JSON.parse(localStorage.getItem('searchDatabase')) || [];
+            dbResultsDiv.innerHTML = ''; // Clear previous database results
+            database.forEach((item, index) => {
+                const dbItem = document.createElement('div');
+                dbItem.classList.add('db-item');
+                dbItem.innerHTML = `
+                    <h3>${item.keyword}</h3>
+                    <p>${item.url}</p>
+                    <p>${item.description}</p>
+                    <button onclick="editItem(${index})">Edit</button>
+                    <button onclick="deleteItem(${index})">Delete</button>
+                `;
+                dbResultsDiv.appendChild(dbItem);
+            });
+        }
+
+        dbForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const keyword = document.getElementById('db-keyword').value;
+            const url = document.getElementById('db-url').value;
+            const description = document.getElementById('db-description').value;
+
+            const database = JSON.parse(localStorage.getItem('searchDatabase')) || [];
+            database.push({ keyword, url, description });
+            localStorage.setItem('searchDatabase', JSON.stringify(database));
+            loadDatabase();
+            dbForm.reset();
+        });
+
+        function editItem(index) {
+            const database = JSON.parse(localStorage.getItem('searchDatabase')) || [];
+            const item = database[index];
+            document.getElementById('db-keyword').value = item.keyword;
+            document.getElementById('db-url').value = item.url;
+            document.getElementById('db-description').value = item.description;
+
+            // Remove the item and then update the database
+            database.splice(index, 1);
+            localStorage.setItem('searchDatabase', JSON.stringify(database));
+            loadDatabase();
+        }
+
+        function deleteItem(index) {
+            const database = JSON.parse(localStorage.getItem('searchDatabase')) || [];
+            database.splice(index, 1);
+            localStorage.setItem('searchDatabase', JSON.stringify(database));
+            loadDatabase();
+        }
+
+        document.getElementById('backup-btn').addEventListener('click', function() {
+            const database = localStorage.getItem('searchDatabase');
+            const blob = new Blob([database], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'database_backup.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('import-btn').addEventListener('click', function() {
+            const fileInput = document.getElementById('import-file');
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = e.target.result;
+                    localStorage.setItem('searchDatabase', data);
+                    loadDatabase();
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            if (confirm("Are you sure you want to reset all data?")) {
+                localStorage.removeItem('searchDatabase'); loadDatabase(); } });
+                    searchForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const query = document.getElementById('search-query').value;
+
+        const database = JSON.parse(localStorage.getItem('searchDatabase')) || [];
+        const results = database.filter(item => item.keyword.includes(query));
+
+        // Save search history
+        const history = JSON.parse(localStorage.getItem('searchHistory')) || [];
+        history.push({ keyword: query, timestamp: new Date().toLocaleString() });
+        localStorage.setItem('searchHistory', JSON.stringify(history));
+        loadHistory();
+
+        resultsDiv.innerHTML = ''; // Clear previous results
+        results.forEach(item => {
+            const resultItem = document.createElement('div');
+            resultItem.classList.add('result-item');
+            resultItem.innerHTML = `<h3><a href="${item.url}" target="_blank">${item.keyword}</a></h3><p>${item.description}</p>`;
+            resultsDiv.appendChild(resultItem);
+        });
+    });
+
+    function loadHistory() {
+        const history = JSON.parse(localStorage.getItem('searchHistory')) || [];
+        historyBody.innerHTML = ''; // Clear previous history
+        history.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${item.keyword}</td><td>${item.timestamp}</td>`;
+            historyBody.appendChild(row);
+        });
+    }
+
+    document.getElementById('reset-history-btn').addEventListener('click', function() {
+        if (confirm("Are you sure you want to reset search history?")) {
+            localStorage.removeItem('searchHistory');
+            loadHistory();
+        }
+    });
+
+    function showTab(tab) {
+        if (tab === 'search') {
+            document.getElementById('search-tab').classList.remove('hidden');
+            document.getElementById('database-tab').classList.add('hidden');
+            document.getElementById('history-tab').classList.add('hidden');
+            document.querySelector('.tab.active').classList.remove('active');
+            document.querySelector('.tab:nth-child(1)').classList.add('active');
+        } else if (tab === 'database') {
+            document.getElementById('search-tab').classList.add('hidden');
+            document.getElementById('database-tab').classList.remove('hidden');
+            document.getElementById('history-tab').classList.add('hidden');
+            document.querySelector('.tab.active').classList.remove('active');
+            document.querySelector('.tab:nth-child(2)').classList.add('active');
+        } else {
+            document.getElementById('search-tab').classList.add('hidden');
+            document.getElementById('database-tab').classList.add('hidden');
+            document.getElementById('history-tab').classList.remove('hidden');
+            document.querySelector('.tab.active').classList.remove('active');
+            document.querySelector('.tab:nth-child(3)').classList.add('active');
+            loadHistory();
+        }
+    }
+
+    // Load the database and history when the page is loaded
+    loadDatabase();
+    loadHistory();
+</script>
+</body> </html>
